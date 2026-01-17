@@ -26,12 +26,18 @@ total_fixed_monthly = monthly_fixed + marketing
 # Mode specific inputs with safety checks to prevent division by zero
 if mode == "Calculate BEP Units":
     price = st.sidebar.number_input("Unit Price ($):", value=150.0, min_value=0.1)
+    # We need a sales volume to calculate how many months to pay back the setup cost
+    est_monthly_sales = st.sidebar.number_input("Estimated Monthly Sales (Units):", value=100, min_value=1)
+    
     adj_price = price * (1 - (discount / 100))
     margin = adj_price - var_costs
     
     if margin > 0:
         bep_units = total_fixed_monthly / margin
         required_revenue = bep_units * adj_price
+        # Payback Calculation
+        monthly_profit = (est_monthly_sales * margin) - total_fixed_monthly
+        payback_months = setup_cost / monthly_profit if monthly_profit > 0 else float('inf')
     else:
         st.error("Price is too low to cover variable costs!")
         st.stop()
@@ -40,15 +46,20 @@ else:
     bep_adj_price = (total_fixed_monthly / units_sold) + var_costs
     bep_price = bep_adj_price / (1 - (discount / 100))
     required_revenue = units_sold * bep_adj_price
+    # In Price mode, we assume the user sells at least at BEP. 
+    # To show payback, we use the BEP price + a small margin or a target price.
+    # For simplicity, if they sell at exactly BEP price, profit is $0 (Infinite months).
+    payback_months = float('inf') 
 
-# --- 2. Results Display (Black Bar Removed) ---
+# --- 2. Results Display ---
 st.title("Business Intelligence Dashboard")
 st.subheader("Key Simulation Results")
 
 if mode == "Calculate BEP Units":
+    payback_text = f"{payback_months:.1f} Months" if payback_months != float('inf') else "Never (Loss/Zero Profit)"
     data = {
-        "Metric": ["Break-Even Point", "Required Monthly Revenue"],
-        "Value": [f"{int(bep_units)} Units", f"${required_revenue:,.2f}"]
+        "Metric": ["Break-Even Point", "Required Monthly Revenue", "Payback Period (Setup Cost)"],
+        "Value": [f"{int(bep_units)} Units", f"${required_revenue:,.2f}", payback_text]
     }
 else:
     data = {
