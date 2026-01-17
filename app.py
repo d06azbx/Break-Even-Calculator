@@ -25,7 +25,6 @@ total_fc = fixed_costs + mkt_budget
 adj_p = price * (1 - (discount / 100))
 unit_margin = adj_p - var_costs
 
-# Only run and display if the button is clicked or on initial load
 if adj_p <= var_costs:
     st.error("⚠️ Error: Adjusted Price must be higher than Variable Cost.")
 else:
@@ -67,7 +66,6 @@ else:
     ax2.plot(months, cumulative_cf, color='#3498db', lw=3, label='Cumulative Cash Flow')
     ax2.axhline(0, color='black', lw=1.5)
 
-    # Finding Payback Point
     if monthly_profit > 0:
         pb_month = initial_investment / monthly_profit
         if pb_month <= 24:
@@ -87,7 +85,7 @@ else:
     plt.tight_layout()
     st.pyplot(fig)
 
-    # --- 4. Table Output ---
+    # --- 4. Table Output (Serial Numbers/Index Removed) ---
     st.markdown("### Key Business Metrics")
     pb_status = f"{initial_investment / monthly_profit:.1f} Months" if monthly_profit > 0 else "Never"
     
@@ -95,4 +93,7 @@ else:
         "Metric": ["Break-even Point (Units)", "Monthly Contribution Margin", "Monthly Net Profit", "Payback Period", "Total Monthly Fixed Costs"],
         "Value": [f"{int(be_units)} units", f"${unit_margin:,.2f}", f"${monthly_profit:,.2f}", pb_status, f"${total_fc:,.2f}"]
     }
-    st.table(pd.DataFrame(metrics_data))
+    
+    # We set 'Metric' as the index to remove the 0, 1, 2, 3 serial numbers
+    df_metrics = pd.DataFrame(metrics_data).set_index("Metric")
+    st.table(df_metrics)
