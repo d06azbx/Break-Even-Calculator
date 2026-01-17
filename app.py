@@ -6,19 +6,6 @@ import pandas as pd
 # --- Page Config ---
 st.set_page_config(page_title="Professional BEP Analyzer", layout="wide")
 
-# Custom CSS for the Results Box
-st.markdown("""
-    <style>
-    .result-container {
-        background-color: #1e1e1e;
-        border-radius: 10px;
-        padding: 20px;
-        border: 1px solid #444;
-        margin-bottom: 25px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- 1. Sidebar: Configuration Panel ---
 st.sidebar.header("ANALYSIS PARAMETERS")
 
@@ -43,7 +30,6 @@ if mode == "Calculate BEP Units":
     margin = adj_price - var_costs
     
     if margin > 0:
-        # BEP Units as a fixed total number based on monthly overheads
         bep_units = total_fixed_monthly / margin
         required_revenue = bep_units * adj_price
     else:
@@ -55,29 +41,24 @@ else:
     bep_price = bep_adj_price / (1 - (discount / 100))
     required_revenue = units_sold * bep_adj_price
 
-# --- 2. Results Display ---
+# --- 2. Results Display (Black Bar Removed) ---
 st.title("Business Intelligence Dashboard")
+st.subheader("Key Simulation Results")
 
-with st.container():
-    st.markdown('<div class="result-container">', unsafe_allow_html=True)
-    st.subheader("Key Simulation Results")
-    
-    # Results table with fixed number formatting (no "Monthly" label)
-    if mode == "Calculate BEP Units":
-        data = {
-            "Metric": ["Break-Even Point", "Required Monthly Revenue"],
-            "Value": [f"{int(bep_units)} Units", f"${required_revenue:,.2f}"]
-        }
-    else:
-        data = {
-            "Metric": ["Break-Even Price", "Required Revenue per Month"],
-            "Value": [f"${bep_price:.2f}", f"${required_revenue:,.2f}"]
-        }
-    
-    # Remove serial numbers by setting index
-    df_results = pd.DataFrame(data).set_index("Metric")
-    st.table(df_results)
-    st.markdown('</div>', unsafe_allow_html=True)
+if mode == "Calculate BEP Units":
+    data = {
+        "Metric": ["Break-Even Point", "Required Monthly Revenue"],
+        "Value": [f"{int(bep_units)} Units", f"${required_revenue:,.2f}"]
+    }
+else:
+    data = {
+        "Metric": ["Break-Even Price", "Required Revenue per Month"],
+        "Value": [f"${bep_price:.2f}", f"${required_revenue:,.2f}"]
+    }
+
+# Display table without serial numbers
+df_results = pd.DataFrame(data).set_index("Metric")
+st.table(df_results)
 
 # --- 3. Professional Graph ---
 fig, ax = plt.subplots(figsize=(12, 5))
