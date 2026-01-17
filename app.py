@@ -13,11 +13,11 @@ st.sidebar.header("ANALYSIS PARAMETERS")
 mode = st.sidebar.radio("Analysis Goal:", ["Calculate BEP Units", "Calculate Required Price"])
 
 st.sidebar.markdown("---")
-# Core inputs
-setup_cost = st.sidebar.number_input("Setup Cost ($):", value=20000.0, min_value=0.0)
-monthly_fixed = st.sidebar.number_input("Monthly Fixed Costs ($):", value=5000.0, min_value=0.0)
-var_costs = st.sidebar.number_input("Var. Cost per Unit ($):", value=50.0, min_value=0.0)
-marketing = st.sidebar.number_input("Monthly Marketing ($):", value=1500.0, min_value=0.0)
+# Core inputs with no currency symbols in labels
+setup_cost = st.sidebar.number_input("Setup Cost:", value=20000.0, min_value=0.0)
+monthly_fixed = st.sidebar.number_input("Monthly Fixed Costs:", value=5000.0, min_value=0.0)
+var_costs = st.sidebar.number_input("Var. Cost per Unit:", value=50.0, min_value=0.0)
+marketing = st.sidebar.number_input("Monthly Marketing:", value=1500.0, min_value=0.0)
 discount = st.sidebar.number_input("Discount (%):", value=0.0, min_value=0.0, max_value=100.0)
 
 # Total Monthly Fixed expenses
@@ -25,9 +25,9 @@ total_fixed_monthly = monthly_fixed + marketing
 
 # Mode specific inputs with safety checks to prevent division by zero
 if mode == "Calculate BEP Units":
-    price = st.sidebar.number_input("Unit Price ($):", value=150.0, min_value=0.1)
-    # We need a sales volume to calculate how many months to pay back the setup cost
-    est_monthly_sales = st.sidebar.number_input("Estimated Monthly Sales (Units):", value=100, min_value=1)
+    price = st.sidebar.number_input("Unit Price:", value=150.0, min_value=0.1)
+    # Necessary for payback period calculation
+    est_monthly_sales = st.sidebar.number_input("Estimated Monthly Sales:", value=100, min_value=1)
     
     adj_price = price * (1 - (discount / 100))
     margin = adj_price - var_costs
@@ -46,9 +46,6 @@ else:
     bep_adj_price = (total_fixed_monthly / units_sold) + var_costs
     bep_price = bep_adj_price / (1 - (discount / 100))
     required_revenue = units_sold * bep_adj_price
-    # In Price mode, we assume the user sells at least at BEP. 
-    # To show payback, we use the BEP price + a small margin or a target price.
-    # For simplicity, if they sell at exactly BEP price, profit is $0 (Infinite months).
     payback_months = float('inf') 
 
 # --- 2. Results Display ---
@@ -56,18 +53,18 @@ st.title("Business Intelligence Dashboard")
 st.subheader("Key Simulation Results")
 
 if mode == "Calculate BEP Units":
-    payback_text = f"{payback_months:.1f} Months" if payback_months != float('inf') else "Never (Loss/Zero Profit)"
+    payback_text = f"{payback_months:.1f} Months" if payback_months != float('inf') else "Never"
     data = {
-        "Metric": ["Break-Even Point", "Required Monthly Revenue", "Payback Period (Setup Cost)"],
-        "Value": [f"{int(bep_units)} Units", f"${required_revenue:,.2f}", payback_text]
+        "Metric": ["Break-Even Point", "Required Monthly Revenue", "Payback Period"],
+        "Value": [f"{int(bep_units)} Units", f"{required_revenue:,.2f}", payback_text]
     }
 else:
     data = {
         "Metric": ["Break-Even Price", "Required Revenue per Month"],
-        "Value": [f"${bep_price:.2f}", f"${required_revenue:,.2f}"]
+        "Value": [f"{bep_price:.2f}", f"{required_revenue:,.2f}"]
     }
 
-# Display table without serial numbers
+# Display table without serial numbers or currency symbols
 df_results = pd.DataFrame(data).set_index("Metric")
 st.table(df_results)
 
@@ -92,9 +89,9 @@ else:
     ax.plot(p_range, profit, color='#3498db', lw=2.5, label='Monthly Operating Profit')
     ax.axhline(0, color='white', lw=1, alpha=0.5)
     ax.axvline(bep_price, color='#2ecc71', linestyle='--', label='Required Price')
-    ax.set_xlabel("Unit Price ($)")
+    ax.set_xlabel("Unit Price")
 
-ax.set_ylabel("USD ($)")
+ax.set_ylabel("Value") # Removed USD symbol
 ax.grid(True, linestyle=':', alpha=0.3)
 ax.legend()
 st.pyplot(fig)
