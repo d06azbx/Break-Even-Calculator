@@ -1,62 +1,98 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-# Page Configuration
-st.set_page_config(page_title="Break-Even Simulator", layout="wide")
-st.title("Business Break-Even Simulation")
+# --- Page Config ---
+st.set_page_config(page_title="Business Intelligence Simulator", layout="wide")
 
-# --- SIDEBAR: COMMAND PANEL ---
-# These inputs match the variables found in your Jupyter Notebook
-st.sidebar.header("COMMAND PANEL")
-startup_cost = st.sidebar.number_input("Startup Cost ($)", value=20000.0, step=1000.0)
-monthly_overheads = st.sidebar.number_input("Monthly Overheads ($)", value=5000.0, step=500.0)
-unit_price = st.sidebar.number_input("Unit Price ($)", value=150.0, step=10.0)
-var_cost = st.sidebar.number_input("Variable Cost per Unit ($)", value=50.0, step=5.0)
-monthly_sales_target = st.sidebar.number_input("Target Monthly Sales (Units)", value=100)
+# --- 1. Sidebar (The Command Panel) ---
+st.sidebar.markdown("<b style='font-size:18px'>COMMAND PANEL</b><hr>", unsafe_allow_html=True)
 
-# Additional parameters from your notebook
-discount = st.sidebar.number_input("Discount (%)", value=0.0) / 100
-marketing_spend = st.sidebar.number_input("Marketing Spend ($)", value=1500.0)
+initial_investment = st.sidebar.number_input("Startup Cost ($):", value=20000.0)
+fixed_costs = st.sidebar.number_input("Monthly Overheads ($):", value=5000.0)
+price = st.sidebar.number_input("Unit Price ($):", value=150.0)
+var_costs = st.sidebar.number_input("Var. Cost/Unit ($):", value=50.0)
+monthly_sales = st.sidebar.number_input("Monthly Sales:", value=100)
+discount = st.sidebar.number_input("Discount (%):", value=0.0)
+mkt_budget = st.sidebar.number_input("Marketing ($):", value=1500.0)
 
-# --- CALCULATIONS ---
-# Logic derived from your Break-Even simulation
-effective_price = unit_price * (1 - discount)
-unit_margin = effective_price - var_cost
-total_fixed_costs = startup_cost + monthly_overheads + marketing_spend
+# The "Run Simulation" Button
+run_sim = st.sidebar.button("RUN DETAILED SIMULATION", type="primary", use_container_width=True)
 
-if st.sidebar.button("RUN DETAILED SIMULATION"):
-    if unit_margin > 0:
-        # Calculate Break-Even Point
-        be_units = total_fixed_costs / unit_margin
-        
-        # Display Metrics
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Break-Even Units", f"{be_units:.2f}")
-        col2.metric("Unit Margin", f"${unit_margin:.2f}")
-        col3.metric("Fixed Costs", f"${total_fixed_costs:,.2f}")
+# --- 2. Calculations & Logic ---
+total_fc = fixed_costs + mkt_budget
+adj_p = price * (1 - (discount / 100))
+unit_margin = adj_p - var_costs
 
-        # --- VISUALIZATION ---
-        # Creating a range for the X-axis (Units)
-        max_x = int(max(be_units * 1.5, monthly_sales_target * 1.5))
-        x = np.linspace(0, max_x, 100)
-        
-        revenue = x * effective_price
-        total_costs = total_fixed_costs + (x * var_cost)
-        
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(x, revenue, label="Total Revenue", color="#2ecc71", lw=2)
-        ax.plot(x, total_costs, label="Total Costs", color="#e74c3c", lw=2)
-        ax.axvline(be_units, color='gray', linestyle='--', label="Break-Even Point")
-        
-        ax.set_title("Break-Even Analysis Chart")
-        ax.set_xlabel("Units Sold")
-        ax.set_ylabel("Currency ($)")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        st.pyplot(fig)
-    else:
-        st.error("Error: Unit Margin is zero or negative. Increase your price or lower variable costs.")
+# Only run and display if the button is clicked or on initial load
+if adj_p <= var_costs:
+    st.error("⚠️ Error: Adjusted Price must be higher than Variable Cost.")
 else:
-    st.info("Adjust the parameters in the sidebar and click 'Run Detailed Simulation'.")
+    be_units = total_fc / unit_margin
+    monthly_profit = (monthly_sales * unit_margin) - total_fc
+
+    st.title("Business Viability Dashboard")
+
+    # --- 3. Visuals (The Charts) ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    plt.rcParams.update({'font.size': 10})
+
+    # --- Chart 1: Detailed Break-Even Analysis ---
+    upper_limit = max(be_units * 2, monthly_sales * 1.5, 50)
+    x_units = np.linspace(0, upper_limit, 100)
+    y_rev = x_units * adj_p
+    y_cost = total_fc + (x_units * var_costs)
+
+    ax1.plot(x_units, y_rev, color='#2ecc71', label='Total Revenue', lw=3)
+    ax1.plot(x_units, y_cost, color='#e74c3c', label='Total Costs', lw=3)
+    ax1.fill_between(x_units, y_rev, y_cost, where=(y_rev > y_cost), color='#2ecc71', alpha=0.15, label='Profit Zone')
+    ax1.fill_between(x_units, y_rev, y_cost, where=(y_rev < y_cost), color='#e74c3c', alpha=0.10, label='Loss Zone')
+
+    # Intersection Marker
+    ax1.scatter(be_units, be_units * adj_p, color='black', s=100, zorder=5)
+    ax1.annotate(f'Break-even Point\n{int(be_units)} Units', xy=(be_units, be_units * adj_p),
+                 xytext=(be_units*0.5, (be_units * adj_p)*1.5), arrowprops=dict(arrowstyle='->', lw=1.5))
+
+    ax1.set_title("Unit Profitability & Margin Analysis", fontsize=14, pad=15)
+    ax1.set_xlabel("Units Sold Per Month")
+    ax1.set_ylabel("USD ($)")
+    ax1.grid(True, linestyle=':', alpha=0.6)
+    ax1.legend(loc='upper left')
+
+    # --- Chart 2: Cumulative Cash Flow Timeline ---
+    months = np.arange(0, 25)
+    cumulative_cf = -initial_investment + (monthly_profit * months)
+
+    ax2.plot(months, cumulative_cf, color='#3498db', lw=3, label='Cumulative Cash Flow')
+    ax2.axhline(0, color='black', lw=1.5)
+
+    # Finding Payback Point
+    if monthly_profit > 0:
+        pb_month = initial_investment / monthly_profit
+        if pb_month <= 24:
+            ax2.scatter(pb_month, 0, color='orange', s=120, zorder=6, label='Payback Point')
+            ax2.annotate(f'Payback: Month {pb_month:.1f}', xy=(pb_month, 0), xytext=(pb_month+1, initial_investment*0.2),
+                         arrowprops=dict(arrowstyle='->'))
+
+    ax2.fill_between(months, 0, cumulative_cf, where=(cumulative_cf > 0), color='#2ecc71', alpha=0.1)
+    ax2.fill_between(months, 0, cumulative_cf, where=(cumulative_cf < 0), color='#e74c3c', alpha=0.1)
+
+    ax2.set_title("24-Month Investment Payback Path", fontsize=14, pad=15)
+    ax2.set_xlabel("Months in Operation")
+    ax2.set_ylabel("Net Position ($)")
+    ax2.grid(True, linestyle=':', alpha=0.6)
+    ax2.legend(loc='upper left')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # --- 4. Table Output ---
+    st.markdown("### Key Business Metrics")
+    pb_status = f"{initial_investment / monthly_profit:.1f} Months" if monthly_profit > 0 else "Never"
+    
+    metrics_data = {
+        "Metric": ["Break-even Point (Units)", "Monthly Contribution Margin", "Monthly Net Profit", "Payback Period", "Total Monthly Fixed Costs"],
+        "Value": [f"{int(be_units)} units", f"${unit_margin:,.2f}", f"${monthly_profit:,.2f}", pb_status, f"${total_fc:,.2f}"]
+    }
+    st.table(pd.DataFrame(metrics_data))
